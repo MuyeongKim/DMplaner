@@ -68,7 +68,7 @@ textarea {
 
 .planner-shell {
   min-height: 100dvh;
-  padding: 4px 6px 174px;
+  padding: 4px 6px 86px;
 }
 
 .planner-card {
@@ -79,44 +79,23 @@ textarea {
   animation: fadeInUp 0.34s ease both;
 }
 
-.legacy-topbar {
+.titlebar {
   background: #e5e8dd;
   border: 1px solid #cfd4c2;
   border-radius: 8px;
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
-  padding: 4px 6px;
-  gap: 4px;
+  padding: 4px 8px;
+  gap: 8px;
 }
 
-.legacy-tabs {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  overflow: auto;
-}
-
-.legacy-tab {
-  border: 0;
-  padding: 5px 8px;
-  border-radius: 6px;
-  background: transparent;
-  font-size: 0.78rem;
-  color: #4d5548;
-  white-space: nowrap;
-}
-
-.legacy-tab.active {
-  color: #1f5124;
+.app-title {
+  margin: 0;
+  font-size: 1rem;
   font-weight: 800;
-  background: rgba(170, 199, 116, 0.48);
-}
-
-.legacy-tab.pill {
-  border: 1px solid #8cae4f;
-  border-radius: 999px;
-  padding-inline: 11px;
+  color: #2f3c27;
+  letter-spacing: 0.02em;
 }
 
 .search-icon {
@@ -588,43 +567,6 @@ textarea {
   color: #616c5d;
 }
 
-.quick-dock {
-  position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: 40px;
-  width: min(330px, calc(100% - 24px));
-  background: #2f3130;
-  border-radius: 999px;
-  padding: 8px 10px;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 7px;
-  box-shadow: 0 12px 24px rgba(24, 26, 24, 0.34);
-  z-index: 21;
-}
-
-.quick-dock button {
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  background: rgba(255, 255, 255, 0.03);
-  color: #eef2ea;
-  border-radius: 999px;
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  margin: 0 auto;
-}
-
-.quick-dock button small {
-  display: none;
-}
-
-.dock-icon {
-  width: 20px;
-  height: 20px;
-}
-
 .bottom-tabs {
   position: fixed;
   left: 50%;
@@ -668,27 +610,6 @@ textarea {
 
 .bottom-tabs .meta-tab {
   color: #3f3f3f;
-}
-
-.fab {
-  position: fixed;
-  right: max(12px, calc(50% - 190px));
-  bottom: 120px;
-  width: 48px;
-  height: 48px;
-  border: 0;
-  border-radius: 999px;
-  background: linear-gradient(160deg, #4d6d3d 0%, #2b3f22 100%);
-  color: #fff;
-  display: grid;
-  place-items: center;
-  box-shadow: 0 10px 22px rgba(22, 35, 16, 0.36);
-  z-index: 22;
-}
-
-.fab-icon {
-  width: 20px;
-  height: 20px;
 }
 
 .modal-backdrop {
@@ -746,7 +667,7 @@ textarea {
 
 @media (max-width: 640px) {
   .planner-shell {
-    padding: 6px 6px 154px;
+    padding: 6px 6px 84px;
   }
 
   .summary-actions {
@@ -771,20 +692,6 @@ textarea {
 
   .three-day-grid {
     grid-template-columns: 1fr;
-  }
-
-  .quick-dock {
-    width: calc(100% - 16px);
-    bottom: 38px;
-  }
-
-  .quick-dock button {
-    width: 46px;
-    height: 46px;
-  }
-
-  .fab {
-    right: 12px;
   }
 }
 
@@ -864,3 +771,4 @@ textarea {
   font-size: 0.68rem;
   color: #5f6c59;
 }
+
