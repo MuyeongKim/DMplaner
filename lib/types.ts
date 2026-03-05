@@ -33,6 +33,8 @@ export interface Schedule {
   source: CalendarSource;
   createdAt: string;
   updatedAt: string;
+  reminderAt?: string;
+  notifiedAt?: string;
   deletedAt?: string;
 }
 
@@ -59,3 +61,4 @@ export interface BackupPayload {
   trash: TrashItem[];
   settings: SettingRecord[];
 }
+

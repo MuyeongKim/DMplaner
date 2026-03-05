@@ -836,3 +836,31 @@ textarea {
 
 
 
+
+
+.notification-panel {
+  border: 1px solid #d8decf;
+  background: #f8fbf1;
+  border-radius: 8px;
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.notification-panel p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #4f5b4c;
+}
+
+.checkbox-field span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reminder-label {
+  margin-left: auto;
+  font-size: 0.68rem;
+  color: #5f6c59;
+}

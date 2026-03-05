@@ -47,6 +47,8 @@ type ScheduleForm = {
   title: string;
   memo: string;
   color: string;
+  reminderEnabled: boolean;
+  reminderAt: string;
 };
 
 type ExceptionForm = {
@@ -76,6 +78,38 @@ function reverseRecent(items: Schedule[]): Schedule[] {
 
 function isDateKey(value: unknown): value is string {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function toDateTimeLocalValue(iso?: string): string {
+  if (!iso) {
+    return "";
+  }
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) {
+    return "";
+  }
+  const yyyy = d.getFullYear();
+  const mm = `${d.getMonth() + 1}`.padStart(2, "0");
+  const dd = `${d.getDate()}`.padStart(2, "0");
+  const hh = `${d.getHours()}`.padStart(2, "0");
+  const min = `${d.getMinutes()}`.padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+}
+
+function formatReminderLabel(iso?: string): string {
+  if (!iso) {
+    return "";
+  }
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  return new Intl.DateTimeFormat("ko-KR", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
 
 type IconProps = {
@@ -155,6 +189,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(true);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | "unsupported">("unsupported");
 
   const [tab, setTab] = useState<PlannerTab>("month");
   const [currentMonth, setCurrentMonth] = useState(fromDateKey(todayKey));
@@ -181,6 +216,8 @@ export default function HomePage() {
     title: "",
     memo: "",
     color: EVENT_COLORS[0],
+    reminderEnabled: false,
+    reminderAt: "",
   });
 
   const [exceptionForm, setExceptionForm] = useState<ExceptionForm>({
@@ -264,6 +301,12 @@ export default function HomePage() {
       navigator.serviceWorker.register("/sw.js").catch(() => {
         // no-op
       });
+    }
+
+    if ("Notification" in window) {
+      setNotificationPermission(Notification.permission);
+    } else {
+      setNotificationPermission("unsupported");
     }
 
     const setOnline = () => setIsOnline(true);
@@ -364,7 +407,15 @@ export default function HomePage() {
   };
 
   const openAddSchedule = (date = selectedDate) => {
-    setScheduleForm({ id: undefined, date, title: "", memo: "", color: EVENT_COLORS[0] });
+    setScheduleForm({
+      id: undefined,
+      date,
+      title: "",
+      memo: "",
+      color: EVENT_COLORS[0],
+      reminderEnabled: false,
+      reminderAt: "",
+    });
     setShowScheduleModal(true);
   };
 
@@ -375,6 +426,8 @@ export default function HomePage() {
       title: schedule.title,
       memo: schedule.memo ?? "",
       color: schedule.color,
+      reminderEnabled: Boolean(schedule.reminderAt),
+      reminderAt: toDateTimeLocalValue(schedule.reminderAt),
     });
     setShowScheduleModal(true);
   };
@@ -389,9 +442,15 @@ export default function HomePage() {
     }
 
     const now = new Date().toISOString();
-    const createdAt = scheduleForm.id
-      ? schedules.find((item) => item.id === scheduleForm.id)?.createdAt ?? now
-      : now;
+    const existing = scheduleForm.id
+      ? schedules.find((item) => item.id === scheduleForm.id)
+      : undefined;
+    const createdAt = existing?.createdAt ?? now;
+
+    const reminderAt =
+      scheduleForm.reminderEnabled && scheduleForm.reminderAt
+        ? new Date(scheduleForm.reminderAt).toISOString()
+        : undefined;
 
     await saveSchedule({
       id: scheduleForm.id ?? createId("schedule"),
@@ -402,6 +461,8 @@ export default function HomePage() {
       source: "user",
       createdAt,
       updatedAt: now,
+      reminderAt,
+      notifiedAt: existing?.reminderAt === reminderAt ? existing?.notifiedAt : undefined,
     });
 
     setShowScheduleModal(false);
@@ -541,6 +602,83 @@ export default function HomePage() {
     setSelectedDate(nowKey);
   };
 
+  const requestNotificationPermission = async () => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      setNotificationPermission("unsupported");
+      setError("이 브라우저에서는 알림을 지원하지 않습니다.");
+      return;
+    }
+
+    const result = await Notification.requestPermission();
+    setNotificationPermission(result);
+    if (result !== "granted") {
+      setError("알림 권한이 허용되지 않았습니다.");
+      return;
+    }
+    setError(null);
+  };
+
+  const sendTestNotification = () => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      setError("이 브라우저에서는 알림을 지원하지 않습니다.");
+      return;
+    }
+    if (Notification.permission !== "granted") {
+      setError("먼저 알림 권한을 허용해주세요.");
+      return;
+    }
+
+    new Notification("Easy Planner 테스트 알림", {
+      body: "브라우저 로컬 알림이 정상 작동합니다.",
+    });
+    setError(null);
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      return;
+    }
+    if (Notification.permission !== "granted") {
+      return;
+    }
+
+    const timer = window.setInterval(async () => {
+      const now = Date.now();
+      const due = schedules.filter((item) => {
+        if (!item.reminderAt) {
+          return false;
+        }
+        const reminderTs = new Date(item.reminderAt).getTime();
+        if (Number.isNaN(reminderTs)) {
+          return false;
+        }
+        const alreadyNotified =
+          item.notifiedAt && new Date(item.notifiedAt).getTime() >= reminderTs;
+        return reminderTs <= now && !alreadyNotified;
+      });
+
+      if (due.length === 0) {
+        return;
+      }
+
+      for (const item of due) {
+        new Notification(`일정 알림: ${item.title}`, {
+          body: `${item.date}${item.memo ? ` · ${item.memo}` : ""}`,
+        });
+
+        await saveSchedule({
+          ...item,
+          notifiedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      await refresh();
+    }, 30000);
+
+    return () => window.clearInterval(timer);
+  }, [schedules, refresh]);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -555,7 +693,15 @@ export default function HomePage() {
 
       if (event.key.toLowerCase() === "n") {
         event.preventDefault();
-        setScheduleForm({ id: undefined, date: selectedDate, title: "", memo: "", color: EVENT_COLORS[0] });
+        setScheduleForm({
+          id: undefined,
+          date: selectedDate,
+          title: "",
+          memo: "",
+          color: EVENT_COLORS[0],
+          reminderEnabled: false,
+          reminderAt: "",
+        });
         setShowScheduleModal(true);
       }
 
@@ -777,6 +923,17 @@ export default function HomePage() {
               </label>
             </div>
 
+            <h3>알림 설정</h3>
+            <div className="notification-panel">
+              <p>
+                권한 상태: <strong>{notificationPermission === "unsupported" ? "지원 안됨" : notificationPermission}</strong>
+              </p>
+              <div className="inline-actions">
+                <button type="button" onClick={requestNotificationPermission}>권한 요청</button>
+                <button type="button" onClick={sendTestNotification}>테스트 알림</button>
+              </div>
+            </div>
+
             <h3>휴지통 (7일 보관)</h3>
             {trash.length === 0 && <p className="empty">휴지통이 비어있습니다.</p>}
             {trash.map((item) => (
@@ -814,6 +971,7 @@ export default function HomePage() {
               <button key={item.id} type="button" className="schedule-list-item" onClick={() => openEditSchedule(item)}>
                 <span className="dot" style={{ backgroundColor: item.color }} />
                 <span>{item.title}</span>
+                {item.reminderAt && <small className="reminder-label">⏰ {formatReminderLabel(item.reminderAt)}</small>}
               </button>
             ))}
           </section>
@@ -920,6 +1078,34 @@ export default function HomePage() {
                   onChange={(event) => setScheduleForm((prev) => ({ ...prev, memo: event.target.value }))}
                 />
               </label>
+              <label className="field checkbox-field">
+                <span>
+                  <input
+                    type="checkbox"
+                    checked={scheduleForm.reminderEnabled}
+                    onChange={(event) =>
+                      setScheduleForm((prev) => ({
+                        ...prev,
+                        reminderEnabled: event.target.checked,
+                        reminderAt: event.target.checked ? prev.reminderAt : "",
+                      }))
+                    }
+                  />
+                  알림 사용
+                </span>
+              </label>
+              {scheduleForm.reminderEnabled && (
+                <label className="field">
+                  <span>알림 시각</span>
+                  <input
+                    type="datetime-local"
+                    value={scheduleForm.reminderAt}
+                    onChange={(event) =>
+                      setScheduleForm((prev) => ({ ...prev, reminderAt: event.target.value }))
+                    }
+                  />
+                </label>
+              )}
               <div className="palette-row">
                 {EVENT_COLORS.map((color) => (
                   <button
@@ -1022,6 +1208,14 @@ export default function HomePage() {
     </main>
   );
 }
+
+
+
+
+
+
+
+
 
 
 
