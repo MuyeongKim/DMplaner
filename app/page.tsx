@@ -213,16 +213,6 @@ export default function HomePage() {
         setStartDate(active.startDate);
       }
 
-      const savedRangeMode = settingsMap.get("ui:rangeMode");
-      if (savedRangeMode === "month" || savedRangeMode === "3day") {
-        setRangeMode(savedRangeMode);
-      }
-
-      const savedTab = settingsMap.get("ui:tab");
-      if (savedTab === "month" || savedTab === "week" || savedTab === "settings" || savedTab === "memo") {
-        setTab(savedTab);
-      }
-
       const savedDate = settingsMap.get("ui:lastDate");
       if (isDateKey(savedDate)) {
         setSelectedDate(savedDate);
